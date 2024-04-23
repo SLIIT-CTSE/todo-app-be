@@ -37,7 +37,7 @@ jobs:
      
       - name: Update Deployment
         run: |
-          kubectl apply -f k8s/be-depl.yaml k8s/be-srv
+          kubectl apply -f k8s/be-depl.yaml k8s/be-srv.yaml
       - name: Check deployment status
         run: |
           kubectl rollout status checklist-be
