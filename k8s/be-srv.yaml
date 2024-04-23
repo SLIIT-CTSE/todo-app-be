@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: be-loadbalancer-srv
+spec:
+  selector:
+    app: be-srv
+  type: LoadBalancer
+  ports:
+    - name: be-srv
+      protocol: TCP
+      port: 8080
+      targetPort: 8080

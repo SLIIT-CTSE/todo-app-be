@@ -1,0 +1,17 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: checklist-be
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: checklist-be
+  template:
+    metadata:
+      labels:
+        app: checklist-be
+    spec:
+      containers:
+        - name: be
+          image: docker.io/chamathjayasekarahtwondevops/checklist-be:latest
