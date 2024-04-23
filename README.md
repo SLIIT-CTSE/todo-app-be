@@ -13,4 +13,4 @@
 - Run `go run ./src/main.go` to start the development server without live reloading
 - Run `air` to start the development server with hot reloading
 
-- Optionally, run `pnpm install` to setup git hooks
+- Optionally, run `pnpm install` to setup git hooks 
