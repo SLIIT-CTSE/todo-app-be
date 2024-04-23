@@ -7,6 +7,7 @@ RUN go mod download
 
 COPY . .
 
+RUN touch .env
 ENV CGO_ENABLED=0 GOOS=linux
 RUN go build -o ./checklist ./src
 
