@@ -10,6 +10,7 @@ COPY . .
 ENV CGO_ENABLED=0 GOOS=linux
 RUN go build -o ./checklist ./src
 
+
 FROM scratch
 
 COPY --from=builder ["/build/checklist", "/build/.env", "/"]
