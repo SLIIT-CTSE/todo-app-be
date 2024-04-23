@@ -1,15 +1,18 @@
-FROM golang:1.21-alpine
+FROM golang:1.21-alpine AS builder
 
-WORKDIR /app
+WORKDIR /build
 
 COPY go.mod go.sum ./
-
 RUN go mod download
 
 COPY . .
 
-RUN touch .env
-RUN CGO_ENABLED=0 GOOS=linux go build -o ./checklist ./src
+ENV CGO_ENABLED=0 GOOS=linux
+RUN go build -o ./checklist ./src
+
+FROM scratch
+
+COPY --from=builder ["/build/checklist", "/build/.env", "/"]
 
 EXPOSE 8080
 
