@@ -14,4 +14,4 @@ spec:
     spec:
       containers:
         - name: be
-          image: docker.io/chamathjayasekarahtwondevops/checklist-be:latest
+          image: acrworkflow1713887802434.azurecr.io/image-workflow-1713887802434
