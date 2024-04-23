@@ -6,15 +6,16 @@ spec:
   replicas: 1
   selector:
     matchLabels:
-      app:  checklist-be
+      app: checklist-be
   template:
     metadata:
       labels:
         app: checklist-be
     spec:
       containers:
-        - name: be
-          image: docker.io/chamathjayasekarahtwondevops/checklist-be:latest
+      - name: be
+        image: docker.io/chamathjayasekarahtwondevops/checklist-be:latest
+        
 ---
 apiVersion: v1
 kind: Service
@@ -22,11 +23,10 @@ metadata:
   name: be-clusterip-srv
 spec:
   selector:
-    app: be-srv
-  type: ClusterIP
+    app: checklist-be  
+  type: LoadBalancer
   ports:
-    - name: be-srv
-      protocol: TCP
-      port: 8080
-      targetPort: 8080
-    
+  - name: be-srv
+    protocol: TCP
+    port: 8080
+    targetPort: 8080
