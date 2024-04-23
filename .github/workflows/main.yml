@@ -40,4 +40,4 @@ jobs:
           kubectl apply -f ./k8s
       - name: Check deployment status
         run: |
-          kubectl rollout status checklist-be
+          kubectl rollout status deployment/checklist-be
