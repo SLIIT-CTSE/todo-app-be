@@ -2,126 +2,52 @@ name: CI/CD Pipeline
 
 on:
   push:
-    branches: ["*"]
-  pull_request:
-    branches: ["*"]
+    branches:
+      - main
 
 jobs:
-  BuildandTest:
+  Build:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v2
-        with:
-          node-version: "18"
+      - name: Set up Docker Build
+        uses: docker/setup-buildx-action@v2
 
-      - name: Install dependencies
-        run: npm install
-
-      - name: Run tests
-        run: npm test
-
-  SnykSecurityScan:
-    needs: BuildandTest
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
-
-      - name: Install Snyk CLI
-        run: npm install -g snyk
-
-      - name: Authenticate with Snyk
-        run: snyk auth ${{ secrets.SNYK_API_TOKEN }}
-
-      - name: Snyk Scan
-        run: snyk test --json > snyk_report.json || true
-
-      - name: Upload Snyk report
-        if: always()
-        uses: actions/upload-artifact@v2
-        with:
-          name: snyk-report
-          path: snyk_report.json
-
-  SecretScan:
-    needs: BuildandTest
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
-
-      - name: Install GitLeaks
-        run: |
-          wget -O git-leaks https://github.com/zricethezav/gitleaks/releases/download/v7.4.1/gitleaks-linux-amd64
-          chmod +x git-leaks
-          sudo mv git-leaks /usr/local/bin/
-          
-      - name: Scan for Secrets
-        run: git-leaks --path="./" --verbose
-
-  Dockerize:
-    runs-on: ubuntu-latest
-    needs: [SnykSecurityScan, SecretScan]
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
-
-      - name: Setup Docker Buildx
-        uses: docker/setup-buildx-action@v1
-
-      - name: Login to Docker Hub
+      - name: Log in to registry
         uses: docker/login-action@v2
         with:
+          registry: https://index.docker.io/v1/
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      - name: Build Docker image
-        run: docker build -t chamathjayasekarahtwondevops/todo-app:latest .
-
-      - name: Tag Docker image
-        run: docker tag randula98/ctse-itemservice:latest randula98/ctse-itemservice:1.0.0
-
-      - name: Tag Docker image
-        run: docker tag chamathjayasekarahtwondevops/todo-app:latest chamathjayasekarahtwondevops/todo-app:1.0.0
-
-      - name: Push Docker image
-        run: docker push chamathjayasekarahtwondevops/todo-app:1.0.0
-
-  DeploytoAzureAppService:
-    runs-on: ubuntu-latest
-    needs: Dockerize
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
-
-      - name: Install Azure CLI
-        run: |
-          curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
-
-      - name: Login to Azure
-        uses: Azure/login@v1
+      - name: Build and push container image to registry
+        uses: docker/build-push-action@v3
+        with:
+           push: true
+           tags: index.docker.io/${{ secrets.DOCKER_USERNAME }}/${{ secrets.DOCKER_IMG_TAG }}
+           file: ./Dockerfile
+      - name: Azure login
+        id: login
+        uses: azure/login@v1.4.3
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
-          enable-AzPSSession: true
-
-      - name: Login to Azure Container Registry
-        run: az acr login --name ${{ secrets.AZURE_ACR_NAME }}
-
-      - name: Pull Docker image from Docker Hub
-        run: docker pull 73e9a1af7843
-
-      - name: Tag Docker image
-        run: docker tag 73e9a1af7843 ${{ secrets.AZURE_ACR_NAME }}.azurecr.io/todo-app:latest
-
-      - name: Push Docker image to Azure Container Registry
-        run: docker push ${{ secrets.AZURE_ACR_NAME }}.azurecr.io/todo-app:latest
-
-      - name: Deploy to Azure App Service
-        run: az webapp create --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} --plan ${{ secrets.AZURE_APP_SERVICE_PLAN }} --name <app-name> --deployment-container-image-name ${{ secrets.AZURE_ACR_NAME }}.azurecr.io/todo-app:latest
-
-      - name: Restart Azure App Service
-        run: az webapp restart --name <app-name> --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }}
+      - name: Set AKS context
+        id: set-context
+        uses: azure/aks-set-context@v3
+        with:
+          resource-group: '${{ secrets.AKS_RESOURCE_GROUP }}' 
+          cluster-name: '${{ secrets.AKS_CLUSTER_NAME }}'
+      - name: Setup kubectl
+        id: install-kubectl
+        uses: azure/setup-kubectl@v3
+      - name: Deploy to AKS
+        id: deploy-aks
+        uses: Azure/k8s-deploy@v4
+        with:
+           namespace: 'default'
+           manifests: |
+                k8s/*
+           images: 'index.docker.io/${{ secrets.DOCKER_USERNAME }}/${{ secrets.DOCKER_IMG_TAG }}'
+           pull-images: true 
